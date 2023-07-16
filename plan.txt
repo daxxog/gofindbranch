@@ -94,6 +94,10 @@ func main() {
 	// Retrieve branches for each repository
 	for _, repo := range repoList {
 		owner, repoName := parseRepo(repo)
+		if owner == "" || repoName == "" {
+			log.Printf("Invalid repository format: %s", repo)
+			continue
+		}
 
 		branches, _, err := client.Repositories.ListBranches(context.Background(), owner, repoName, nil)
 		if err != nil {
@@ -106,7 +110,7 @@ func main() {
 
 		// Display the filtered branch information
 		for _, branch := range filteredBranches {
-			printBranch(branch)
+			printBranch(repo, branch)
 		}
 	}
 }
@@ -115,19 +119,18 @@ func parseRepo(repo string) (string, string) {
 	// Assuming the format is "<owner>/<repository>"
 	split := regexp.MustCompile(`\s*/\s*`).Split(repo, -1)
 	if len(split) != 2 {
-		log.Printf("Invalid repository format: %s", repo)
 		return "", ""
 	}
 
 	return split[0], split[1]
 }
 
-func printBranch(branch *github.Branch) {
+func printBranch(repo string, branch *github.Branch) {
 	branchInfo := struct {
 		Repository string `json:"repository"`
 		Branch     string `json:"branch"`
 	}{
-		Repository: fmt.Sprintf("%s/%s", branch.GetRepo().GetOwner().GetLogin(), branch.GetRepo().GetName()),
+		Repository: fmt.Sprintf("%s/%s", repo, branch.GetCommit().GetCommit().GetAuthor().GetLogin()),
 		Branch:     branch.GetName(),
 	}
 
