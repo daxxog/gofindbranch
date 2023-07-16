@@ -39,13 +39,11 @@ func filterBranches(branches []*github.Branch, filterRegex string) []*github.Bra
 	return filteredBranches
 }
 
-func branches_main() {
+func branches_main(filter string, openPRsOnly bool) {
 	// Parse command-line arguments
-	filter := flag.String("filter", "", "Branch filter (regex)")
-	openPRsOnly := flag.Bool("open-prs-only", false, "Filter for only open pull requests")
 	flag.Parse()
 
-	if *filter == "" {
+	if filter == "" {
 		log.Fatal("Please provide a branch filter using the -filter flag")
 	}
 
@@ -78,7 +76,7 @@ func branches_main() {
 
 		// Display the filtered branch information
 		for _, branch := range branches {
-			printBranch(repo, branch, client, *openPRsOnly, owner, repoName)
+			printBranch(repo, branch, client, openPRsOnly, owner, repoName)
 		}
 
 	}

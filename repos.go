@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"regexp"
@@ -23,13 +22,8 @@ func filterRepositories(repos []*github.Repository, filterRegex string) []*githu
 	return filteredRepos
 }
 
-func repos_main() {
-	// Parse command-line arguments
-	filter := flag.String("filter", "", "Repository filter (regex)")
-	currentUserOnly := flag.Bool("current-user-only", false, "List repositories owned by the current logged-in user only")
-	flag.Parse()
-
-	if *filter == "" && !*currentUserOnly {
+func repos_main(filter string, currentUserOnly bool) {
+	if filter == "" && !currentUserOnly {
 		log.Fatal("Please provide a repository filter using the -filter flag or use -current-user-only flag to list repositories owned by the current user")
 	}
 
@@ -47,7 +41,7 @@ func repos_main() {
 		var resp *github.Response
 		var err error
 
-		if *currentUserOnly {
+		if currentUserOnly {
 			// Retrieve repositories owned by the current user
 			user, _, err := client.Users.Get(context.Background(), "")
 			if err != nil {
@@ -72,7 +66,7 @@ func repos_main() {
 	}
 
 	// Filter repositories based on the filter input
-	filteredRepos := filterRepositories(allRepos, *filter)
+	filteredRepos := filterRepositories(allRepos, filter)
 
 	// Display the filtered repositories
 	for _, repo := range filteredRepos {
