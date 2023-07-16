@@ -116,13 +116,17 @@ func printBranch(repo string, branch *github.Branch, client *github.Client, open
 		Repository string `json:"repository"`
 		Branch     string `json:"branch"`
 		PR         string `json:"pr"`
+		Open       bool   `json:"open"`
 	}{
 		Repository: fmt.Sprintf("%s/%s", repo, branch.GetCommit().GetCommit().GetAuthor().GetLogin()),
 		Branch:     branch.GetName(),
 	}
 
 	// Retrieve pull request information
-	prs, _, err := client.PullRequests.List(context.Background(), owner, repoName, &github.PullRequestListOptions{})
+	prOptions := &github.PullRequestListOptions{
+		State: "all", // Retrieve all pull requests, regardless of state
+	}
+	prs, _, err := client.PullRequests.List(context.Background(), owner, repoName, prOptions)
 	if err != nil {
 		log.Printf("Failed to retrieve pull requests for branch %s: %v", branch.GetName(), err)
 	}
@@ -132,11 +136,13 @@ func printBranch(repo string, branch *github.Branch, client *github.Client, open
 		for _, pr := range prs {
 			if pr.GetState() == "open" {
 				branchInfo.PR = pr.GetHTMLURL()
+				branchInfo.Open = true
 				break
 			}
 		}
 	} else if len(prs) > 0 {
 		branchInfo.PR = prs[0].GetHTMLURL()
+		branchInfo.Open = prs[0].GetState() == "open"
 	}
 
 	jsonData, err := json.Marshal(branchInfo)
