@@ -1,2 +1,2 @@
-gofindbranch: github.go
+gofindbranch: branches.go
 	go build .
