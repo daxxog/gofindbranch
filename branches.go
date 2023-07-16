@@ -39,7 +39,7 @@ func filterBranches(branches []*github.Branch, filterRegex string) []*github.Bra
 	return filteredBranches
 }
 
-func main() {
+func branches_main() {
 	// Parse command-line arguments
 	filter := flag.String("filter", "", "Branch filter (regex)")
 	openPRsOnly := flag.Bool("open-prs-only", false, "Filter for only open pull requests")

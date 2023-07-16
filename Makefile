@@ -1,2 +1,2 @@
-gofindbranch: branches.go
+gofindbranch: branches.go repos.go main.go
 	go build .
