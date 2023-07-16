@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/google/go-github/v39/github"
 	"golang.org/x/oauth2"
@@ -41,6 +42,7 @@ func filterBranches(branches []*github.Branch, filterRegex string) []*github.Bra
 func main() {
 	// Parse command-line arguments
 	filter := flag.String("filter", "", "Branch filter (regex)")
+	openPRsOnly := flag.Bool("open-prs-only", false, "Filter for only open pull requests")
 	flag.Parse()
 
 	if *filter == "" {
@@ -74,13 +76,11 @@ func main() {
 			continue
 		}
 
-		// Filter branches based on the filter input
-		filteredBranches := filterBranches(branches, *filter)
-
 		// Display the filtered branch information
-		for _, branch := range filteredBranches {
-			printBranch(repo, branch)
+		for _, branch := range branches {
+			printBranch(repo, branch, client, *openPRsOnly, owner, repoName)
 		}
+
 	}
 }
 
@@ -94,13 +94,49 @@ func parseRepo(repo string) (string, string) {
 	return split[0], split[1]
 }
 
-func printBranch(repo string, branch *github.Branch) {
+func extractPullRequestNumber(url string) int {
+	parts := strings.Split(url, "/")
+	number := parts[len(parts)-1]
+
+	return parseInt(number)
+}
+
+func parseInt(number string) int {
+	var result int
+	_, err := fmt.Sscan(number, &result)
+	if err != nil {
+		return -1
+	}
+
+	return result
+}
+
+func printBranch(repo string, branch *github.Branch, client *github.Client, openPRsOnly bool, owner, repoName string) {
 	branchInfo := struct {
 		Repository string `json:"repository"`
 		Branch     string `json:"branch"`
+		PR         string `json:"pr"`
 	}{
 		Repository: fmt.Sprintf("%s/%s", repo, branch.GetCommit().GetCommit().GetAuthor().GetLogin()),
 		Branch:     branch.GetName(),
+	}
+
+	// Retrieve pull request information
+	prs, _, err := client.PullRequests.List(context.Background(), owner, repoName, &github.PullRequestListOptions{})
+	if err != nil {
+		log.Printf("Failed to retrieve pull requests for branch %s: %v", branch.GetName(), err)
+	}
+
+	if openPRsOnly {
+		// Check if there is an open pull request
+		for _, pr := range prs {
+			if pr.GetState() == "open" {
+				branchInfo.PR = pr.GetHTMLURL()
+				break
+			}
+		}
+	} else if len(prs) > 0 {
+		branchInfo.PR = prs[0].GetHTMLURL()
 	}
 
 	jsonData, err := json.Marshal(branchInfo)
