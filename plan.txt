@@ -1,0 +1,24 @@
+Apologies for jumping ahead. I'd be happy to ask you some questions to better understand your requirements. Please provide your responses, and I'll tailor the code accordingly:
+
+1. Which programming language would you like to use for this tool?
+2. Are you comfortable with using a personal access token (PAT) to authenticate with the GitHub API?
+3. Do you want to list branches from all of your repositories or just specific repositories?
+4. If you want to list branches from specific repositories, please provide the names of those repositories.
+5. Should the tool only list branches created by you, or do you want to include branches created by others as well?
+6. How would you like the tool to display the branch information? For example, do you want it to print to the console or generate a file?
+7. Are there any additional features or specific requirements you have in mind for this tool?
+
+Once I have your responses, I'll be able to provide a more customized solution for you.
+
+==============
+==============
+
+1. Golang
+2. Yes, but let's keep those in environment variables and avoid hardcoding them
+3. All branches, from a user or organization
+4. Instead of this, let's introduce a user-input, regex-based filter for repository names
+5. Just branches created by me
+6. Print to console, json format
+7a. If a branch has a pull request associated with it, include that information as well.
+7b. Similar to 4, have a regex-based filter for branch names.
+7c. Don't use http requests directly, instead use the GitHub golang client library.
