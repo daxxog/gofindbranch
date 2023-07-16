@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -23,72 +25,89 @@ func authenticate() *github.Client {
 	return client
 }
 
-func filterRepositories(repos []*github.Repository, filterRegex string) []*github.Repository {
-	filteredRepos := []*github.Repository{}
+func filterBranches(branches []*github.Branch, filterRegex string) []*github.Branch {
+	filteredBranches := []*github.Branch{}
 	filter := regexp.MustCompile(filterRegex)
 
-	for _, repo := range repos {
-		if filter.MatchString(repo.GetName()) {
-			filteredRepos = append(filteredRepos, repo)
+	for _, branch := range branches {
+		if filter.MatchString(branch.GetName()) {
+			filteredBranches = append(filteredBranches, branch)
 		}
 	}
 
-	return filteredRepos
+	return filteredBranches
 }
 
 func main() {
 	// Parse command-line arguments
-	filter := flag.String("filter", "", "Repository filter (regex)")
-	currentUserOnly := flag.Bool("current-user-only", false, "List repositories owned by the current logged-in user only")
+	filter := flag.String("filter", "", "Branch filter (regex)")
 	flag.Parse()
 
-	if *filter == "" && !*currentUserOnly {
-		log.Fatal("Please provide a repository filter using the -filter flag or use -current-user-only flag to list repositories owned by the current user")
+	if *filter == "" {
+		log.Fatal("Please provide a branch filter using the -filter flag")
+	}
+
+	// Read the list of repositories from standard input
+	repoList := []string{}
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		repoList = append(repoList, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal("Failed to read input:", err)
 	}
 
 	// Authenticate with the GitHub API
 	client := authenticate()
 
-	// Retrieve repositories
-	opt := &github.RepositoryListOptions{
-		ListOptions: github.ListOptions{PerPage: 100},
-	}
-	var allRepos []*github.Repository
-
-	for {
-		var repos []*github.Repository
-		var resp *github.Response
-		var err error
-
-		if *currentUserOnly {
-			// Retrieve repositories owned by the current user
-			user, _, err := client.Users.Get(context.Background(), "")
-			if err != nil {
-				log.Fatal("Failed to retrieve current user:", err)
-			}
-			repos, resp, err = client.Repositories.List(context.Background(), *user.Login, opt)
-		} else {
-			// Retrieve all repositories
-			repos, resp, err = client.Repositories.List(context.Background(), "", opt)
+	// Retrieve branches for each repository
+	for _, repo := range repoList {
+		owner, repoName := parseRepo(repo)
+		if owner == "" || repoName == "" {
+			log.Printf("Invalid repository format: %s", repo)
+			continue
 		}
 
+		branches, _, err := client.Repositories.ListBranches(context.Background(), owner, repoName, nil)
 		if err != nil {
-			log.Fatal("Failed to retrieve repositories:", err)
+			log.Printf("Failed to retrieve branches for repository %s: %v", repo, err)
+			continue
 		}
 
-		allRepos = append(allRepos, repos...)
+		// Filter branches based on the filter input
+		filteredBranches := filterBranches(branches, *filter)
 
-		if resp.NextPage == 0 {
-			break
+		// Display the filtered branch information
+		for _, branch := range filteredBranches {
+			printBranch(repo, branch)
 		}
-		opt.Page = resp.NextPage
+	}
+}
+
+func parseRepo(repo string) (string, string) {
+	// Assuming the format is "<owner>/<repository>"
+	split := regexp.MustCompile(`\s*/\s*`).Split(repo, -1)
+	if len(split) != 2 {
+		return "", ""
 	}
 
-	// Filter repositories based on the filter input
-	filteredRepos := filterRepositories(allRepos, *filter)
+	return split[0], split[1]
+}
 
-	// Display the filtered repositories
-	for _, repo := range filteredRepos {
-		fmt.Println(repo.GetName())
+func printBranch(repo string, branch *github.Branch) {
+	branchInfo := struct {
+		Repository string `json:"repository"`
+		Branch     string `json:"branch"`
+	}{
+		Repository: fmt.Sprintf("%s/%s", repo, branch.GetCommit().GetCommit().GetAuthor().GetLogin()),
+		Branch:     branch.GetName(),
 	}
+
+	jsonData, err := json.Marshal(branchInfo)
+	if err != nil {
+		log.Printf("Failed to marshal JSON: %v", err)
+		return
+	}
+
+	fmt.Println(string(jsonData))
 }
