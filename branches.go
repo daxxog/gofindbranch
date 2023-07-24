@@ -74,8 +74,11 @@ func branches_main(filter string, openPRsOnly bool) {
 			continue
 		}
 
+		// Filter branches using the provided regex
+		filteredBranches := filterBranches(branches, filter)
+
 		// Display the filtered branch information
-		for _, branch := range branches {
+		for _, branch := range filteredBranches {
 			printBranch(repo, branch, client, openPRsOnly, owner, repoName)
 		}
 
